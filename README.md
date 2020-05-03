@@ -10,7 +10,7 @@ storage service for Cloud Mall
 # remove before docker image if exists
 # docker rmi cloudmall/storage:latest
 
-docker run -d -p 5050:80 -v /etc/configs/storage.appsettings.json:/app/appsettings/Production.json cloudmall/storage:latest
+docker run -d -p 5050:80 --name storage-service cloudmall/storage:latest
 
 docker run -d -p 5050:80 -v /etc/configs/storage.appsettings.json:/app/appsettings/Production.json cloudmall/storage:latest
 ```
