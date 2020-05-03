@@ -27,7 +27,8 @@ namespace CloudMall.Services.Storage.Services
         public async Task<string> SaveBytes(byte[] bytes, string filePath)
         {
             var base64Str = Convert.ToBase64String(bytes);
-            using (var response = await _httpClient.PostAsFormAsync(PostFileApiUrlFormat.FormatWith(_options.UserName, _options.RepositoryName, filePath),
+            var requestUrl = PostFileApiUrlFormat.FormatWith(_options.UserName, _options.RepositoryName, filePath);
+            using (var response = await _httpClient.PostAsFormAsync(requestUrl,
                 new Dictionary<string, string>
                 {
                     { "access_token", _options.AccessToken },

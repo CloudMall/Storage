@@ -12,7 +12,7 @@ using WeihanLi.Common.Models;
 namespace CloudMall.Services.Storage.Controllers
 {
     [ApiController]
-    [Route("api/storage/[controller]")]
+    [Route("api/storage")]
     public class FilesController : ControllerBase
     {
         private readonly ILogger<FilesController> _logger;
@@ -20,8 +20,8 @@ namespace CloudMall.Services.Storage.Controllers
 
         private static readonly Dictionary<string, string> ExtTable = new Dictionary<string, string>
         {
-            {"image", "gif,jpg,jpeg,png,bmp"},
-            {"file", "doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip"}
+            {"images", "gif,jpg,jpeg,png,bmp"},
+            {"files", "doc,docx,xls,xlsx,ppt,pptx,pdf,txt,zip"}
         };
 
         private const int MaxSize = 100 * 1024 * 1024;
@@ -32,25 +32,41 @@ namespace CloudMall.Services.Storage.Controllers
             _storageProvider = storageProvider;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Post(IFormFile formFile)
+        [HttpPost("files")]
+        public async Task<IActionResult> PostFile(IFormFile formFile, [FromQuery]string dir)
         {
             //file root dir path 文件保存目录路径
-            var savePath = "/upload/";
             if (formFile?.FileName == null)
             {
                 return BadRequest(ResultModel.Fail<string>("上传文件为空"));
             }
 
-            var dirName = Request.Query["dir"][0];
-            if (string.IsNullOrEmpty(dirName))
+            if (string.IsNullOrEmpty(dir))
             {
-                dirName = "files";
+                dir = "files";
             }
+            return await UploadFile(formFile, dir);
+        }
+
+        [HttpPost("images")]
+        public async Task<IActionResult> PostImages(IFormFile formFile)
+        {
+            if (formFile?.FileName == null)
+            {
+                return BadRequest(ResultModel.Fail<string>("上传文件为空"));
+            }
+
+            return await UploadFile(formFile, "images");
+        }
+
+        private async Task<IActionResult> UploadFile(IFormFile formFile, string dirName)
+        {
             if (!ExtTable.ContainsKey(dirName))
             {
                 return BadRequest(ResultModel.Fail<string>("目录名不正确"));
             }
+            var savePath = "/upload/";
+
             var fileExt = Path.GetExtension(formFile.FileName)?.ToLower() ?? string.Empty;
             if (formFile.Length > MaxSize)
             {
@@ -65,22 +81,20 @@ namespace CloudMall.Services.Storage.Controllers
             var ymd = DateTime.UtcNow.ToString("yyyyMMdd", DateTimeFormatInfo.InvariantInfo);
             savePath += ymd + "/";
 
-            var newFileName = DateTime.UtcNow.ToString("yyyyMMddHHmmss_ffff", DateTimeFormatInfo.InvariantInfo) + fileExt;
+            var newFileName = DateTime.UtcNow.ToString("HHmmss_ffff", DateTimeFormatInfo.InvariantInfo) + fileExt;
             var filePath = savePath + newFileName;
             //save file
-            using (var stream = new MemoryStream())
+            await using var stream = new MemoryStream();
+            await formFile.CopyToAsync(stream);
+
+            var fileUrl = await _storageProvider.SaveBytes(stream.ToArray(), filePath);
+            if (!string.IsNullOrEmpty(fileUrl))
             {
-                await formFile.CopyToAsync(stream);
-
-                var fileUrl = await _storageProvider.SaveBytes(stream.ToArray(), filePath);
-                if (!string.IsNullOrEmpty(fileUrl))
-                {
-                    _logger.LogInformation($"file({formFile.FileName}) saved success, savedUrl:{fileUrl}");
-                    return Ok(ResultModel.Success(fileUrl));
-                }
-
-                return BadRequest(ResultModel.Fail<string>($"文件上传失败"));
+                _logger.LogInformation($"file({formFile.FileName}) saved success, savedUrl:{fileUrl}");
+                return Ok(ResultModel.Success(fileUrl));
             }
+
+            return BadRequest(ResultModel.Fail<string>($"文件上传失败"));
         }
     }
 }
