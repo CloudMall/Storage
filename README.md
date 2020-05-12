@@ -12,7 +12,7 @@ storage service for Cloud Mall
 
 docker run -d -p 5050:80 --name storage-service cloudmall/storage:latest
 
-docker run -d -p 5050:80 -v /etc/configs/storage.appsettings.json:/app/appsettings/Production.json cloudmall/storage:latest
+docker run -d -p 5050:80 -v /etc/configs/storage.appsettings.json:/app/appsettings.Production.json cloudmall/storage:latest
 ```
 
 ## Api
